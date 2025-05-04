@@ -17,6 +17,7 @@ services:
 
     startCommand: gunicorn backend.wsgi:application
 
+
     envVars:
       - key: DEBUG
         value: False
