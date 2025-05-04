@@ -1,19 +1,23 @@
+# Entornos virtuales y compilados
 .venv/
-
 __pycache__/
+*.py[cod]
 
-*.pyc
-
+# Dependencias de Node
 node_modules/
 
+# Builds de Vite y Vue
 dist/
-
 frontend/dist/
 
+# Archivos estáticos generados
 backend/staticfiles/
-
 backend/staticfiles_build/
 
+# Archivos de entorno y base de datos
 .env
+*.sqlite3
 
-db.sqlite3
+# Otros comunes
+.DS_Store
+*.log
