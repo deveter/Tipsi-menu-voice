@@ -1,0 +1,9 @@
+Django>=5.0
+gunicorn
+pandas
+openai
+python-dotenv
+djangorestframework
+django-cors-headers
+openpyxl
+

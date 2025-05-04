@@ -1,0 +1,111 @@
+import os
+import tempfile
+from dotenv import load_dotenv
+import openai
+import pandas as pd
+from api.email import enviar_email_brevo
+import logging
+from django.conf import settings
+
+
+from rest_framework.views import APIView
+from rest_framework.parsers import MultiPartParser, JSONParser
+from rest_framework.response import Response
+from django.core.mail import EmailMessage
+from django.views.generic import View
+from django.http import HttpResponse, Http404
+from django.conf import settings
+
+logger = logging.getLogger(__name__)
+load_dotenv()
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+
+class TranscribeView(APIView):
+    parser_classes = [MultiPartParser]
+
+    def post(self, request, *args, **kwargs):
+        audio_file = request.FILES.get('audio')
+        if not audio_file:
+            return Response({"error": "No se recibió ningún archivo de audio"}, status=400)
+
+        with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as temp_audio:
+            for chunk in audio_file.chunks():
+                temp_audio.write(chunk)
+            temp_audio.flush()
+
+            with open(temp_audio.name, "rb") as f:
+                transcript_response = openai.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=f,
+                    response_format="text"
+                )
+
+        transcript = transcript_response
+
+        prompt = f"""
+Convierte este texto hablado en una lista JSON con los campos: familia, producto y precio (En número).
+
+Texto: {transcript}
+"""
+
+        gpt_response = openai.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "Eres un asistente que convierte listas habladas de cartas de restaurante en tablas JSON."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.2
+        )
+
+        structured = gpt_response.choices[0].message.content
+
+        return Response({
+            "transcription": transcript,
+            "structured": structured
+        })
+
+
+class EnviarCartaView(APIView):
+    parser_classes = [JSONParser]
+
+    def post(self, request):
+        nombre = request.data.get("nombre_restaurante")
+        email = request.data.get("email")
+        carta = request.data.get("carta")
+
+        if not nombre or not email or not carta:
+            return Response({"error": "Faltan datos"}, status=400)
+
+        try:
+            df = pd.DataFrame(carta)
+            with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+                excel_path = tmp.name
+                df.to_excel(excel_path, index=False)
+
+            asunto = f"📋 Nueva carta enviada por {nombre}"
+            cuerpo = f"El restaurante '{nombre}' con email '{email}' ha enviado su carta adjunta en Excel."
+
+            enviar_email_brevo(
+                destinatario="ppinar@tipsitpv.com",
+                asunto=asunto,
+                cuerpo=cuerpo,
+                adjunto=excel_path
+            )
+
+            return Response({"message": "Carta enviada correctamente"})
+
+        except Exception as e:
+            logger.exception("❌ Error al enviar el email:")
+            return Response({"error": str(e)}, status=500)
+
+
+class FrontendAppView(View):
+    def get(self, request):
+        index_path = os.path.join(settings.BASE_DIR, 'staticfiles', 'index.html')
+        if os.path.exists(index_path):
+            with open(index_path, 'r', encoding='utf-8') as f:
+                return HttpResponse(f.read())
+        else:
+            raise Http404("index.html no encontrado en STATIC_ROOT")
+

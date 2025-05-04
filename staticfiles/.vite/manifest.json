@@ -1,0 +1,23 @@
+{
+  "index.html": {
+    "file": "assets/index-6sit4gk-.js",
+    "name": "index",
+    "src": "index.html",
+    "isEntry": true,
+    "css": [
+      "assets/index-CESMyXxD.css"
+    ],
+    "assets": [
+      "assets/tipsi-logo-YP07V9Q8.png",
+      "assets/favicon-CjU1YI4z.ico"
+    ]
+  },
+  "public/favicon.ico": {
+    "file": "assets/favicon-CjU1YI4z.ico",
+    "src": "public/favicon.ico"
+  },
+  "src/assets/tipsi-logo.png": {
+    "file": "assets/tipsi-logo-YP07V9Q8.png",
+    "src": "src/assets/tipsi-logo.png"
+  }
+}
