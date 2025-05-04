@@ -43,8 +43,29 @@ class TranscribeView(APIView):
 
         transcript = transcript_response
 
+        # ✅ Prompt actualizado con el campo "formato"
         prompt = f"""
-Convierte este texto hablado en una lista JSON con los campos: familia, producto y precio (En número).
+Convierte este texto hablado en una lista JSON con los siguientes campos:
+- familia: categoría del producto
+- producto: nombre del producto
+- precio: en número (sin símbolo de €)
+- formato: si se menciona 'tapa', 'ración', 'plato' u otro formato, indícalo. Si no se menciona, usa "Único" como valor por defecto.
+
+Ejemplo de salida:
+[
+  {{
+    "familia": "Entrantes",
+    "producto": "Croquetas",
+    "precio": 2,
+    "formato": "Único"
+  }},
+  {{
+    "familia": "Entrantes",
+    "producto": "Calamares fritos",
+    "precio": 5,
+    "formato": "ración"
+  }}
+]
 
 Texto: {transcript}
 """
@@ -64,7 +85,6 @@ Texto: {transcript}
             "transcription": transcript,
             "structured": structured
         })
-
 
 class EnviarCartaView(APIView):
     parser_classes = [JSONParser]
