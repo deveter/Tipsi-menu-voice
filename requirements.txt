@@ -6,4 +6,4 @@ python-dotenv
 djangorestframework
 django-cors-headers
 openpyxl
-
+whitenoise
