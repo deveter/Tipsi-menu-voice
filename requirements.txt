@@ -1,7 +1,7 @@
 Django>=5.0
 gunicorn
 pandas
-openai
+openai==0.27.8
 python-dotenv
 djangorestframework
 django-cors-headers

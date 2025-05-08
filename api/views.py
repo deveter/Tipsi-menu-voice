@@ -1,12 +1,11 @@
 import os
 import tempfile
+from pathlib import Path
 from dotenv import load_dotenv
 import openai
 import pandas as pd
 from api.email import enviar_email_brevo
 import logging
-from django.conf import settings
-
 
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, JSONParser
@@ -17,9 +16,10 @@ from django.http import HttpResponse, Http404
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
-load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
 
+# Cargar variables de entorno
+load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent.parent / '.env')
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 class TranscribeView(APIView):
     parser_classes = [MultiPartParser]
@@ -35,7 +35,7 @@ class TranscribeView(APIView):
             temp_audio.flush()
 
             with open(temp_audio.name, "rb") as f:
-                transcript_response = openai.audio.transcriptions.create(
+                transcript_response = openai.Audio.transcribe(
                     model="whisper-1",
                     file=f,
                     response_format="text"
@@ -43,7 +43,6 @@ class TranscribeView(APIView):
 
         transcript = transcript_response
 
-        # ✅ Prompt actualizado con el campo "formato"
         prompt = f"""
 Convierte este texto hablado en una lista JSON con los siguientes campos:
 - familia: categoría del producto
@@ -70,7 +69,7 @@ Ejemplo de salida:
 Texto: {transcript}
 """
 
-        gpt_response = openai.chat.completions.create(
+        gpt_response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[
                 {"role": "system", "content": "Eres un asistente que convierte listas habladas de cartas de restaurante en tablas JSON."},
@@ -79,7 +78,7 @@ Texto: {transcript}
             temperature=0.2
         )
 
-        structured = gpt_response.choices[0].message.content
+        structured = gpt_response["choices"][0]["message"]["content"]
 
         return Response({
             "transcription": transcript,
@@ -119,7 +118,6 @@ class EnviarCartaView(APIView):
             logger.exception("❌ Error al enviar el email:")
             return Response({"error": str(e)}, status=500)
 
-
 class FrontendAppView(View):
     def get(self, request):
         index_path = os.path.join(settings.BASE_DIR, 'staticfiles', 'index.html')
@@ -128,4 +126,3 @@ class FrontendAppView(View):
                 return HttpResponse(f.read())
         else:
             raise Http404("index.html no encontrado en STATIC_ROOT")
-
