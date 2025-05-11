@@ -31,31 +31,29 @@ class TranscribeView(APIView):
 
         transcripciones = []
 
-        try:
-            for audio_file in audio_files:
-                with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as temp_audio:
-                    for chunk in audio_file.chunks():
-                        temp_audio.write(chunk)
-                    temp_audio.flush()
+        for audio_file in audio_files:
+            with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_audio:
+                for chunk in audio_file.chunks():
+                    temp_audio.write(chunk)
+                temp_audio.flush()
 
-                    with open(temp_audio.name, "rb") as f:
-                        transcript_response = openai.Audio.transcribe(
-                            model="whisper-1",
-                            file=f,
-                            response_format="text"
-                        )
-                        transcripciones.append(transcript_response)
+                with open(temp_audio.name, "rb") as f:
+                    transcript_response = openai.Audio.transcribe(
+                        model="whisper-1",
+                        file=f,
+                        response_format="text"
+                    )
+                    transcripciones.append(transcript_response)
 
-                os.remove(temp_audio.name)
+        # Combina todas las transcripciones en una sola
+        transcript = "\n".join(transcripciones)
 
-            transcript = "\n".join(transcripciones)
-
-            prompt = f"""
-Convierte este texto hablado en una lista JSON con los siguientes campos:
+        prompt = f"""
+Convierte este audio transcrito es de un hostelero dictando su carta en una lista JSON con los siguientes campos:
 - familia: categoría del producto
 - producto: nombre del producto
-- precio: en número (sin símbolo de €)
-- formato: si se menciona 'tapa', 'ración', 'plato' u otro formato, indícalo. Si no se menciona, usa "Único" como valor por defecto.
+- precio: en número (sin €)
+- formato ('tapa', 'ración', etc., o 'Único' si no se dice)
 
 Ejemplo de salida:
 [
@@ -76,26 +74,21 @@ Ejemplo de salida:
 Texto: {transcript}
 """
 
-            gpt_response = openai.ChatCompletion.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": "Eres un asistente que convierte listas habladas de cartas de restaurante en tablas JSON."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.2
-            )
+        gpt_response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "Eres un asistente que convierte listas habladas de cartas de restaurante en tablas JSON."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.2
+        )
 
-            structured = gpt_response["choices"][0]["message"]["content"]
+        structured = gpt_response["choices"][0]["message"]["content"]
 
-            return Response({
-                "transcription": transcript,
-                "structured": structured
-            })
-
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            return Response({"error": str(e)}, status=500)
+        return Response({
+            "transcription": transcript,
+            "structured": structured
+        })
 
 class EnviarCartaView(APIView):
     parser_classes = [JSONParser]
