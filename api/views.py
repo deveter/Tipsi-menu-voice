@@ -1,5 +1,6 @@
 import os
 import tempfile
+import json
 from pathlib import Path
 from dotenv import load_dotenv
 import openai
@@ -45,29 +46,22 @@ class TranscribeView(APIView):
                     )
                     transcripciones.append(transcript_response)
 
-        # Combina todas las transcripciones en una sola
         transcript = "\n".join(transcripciones)
 
         prompt = f"""
-Convierte este audio transcrito es de un hostelero dictando su carta en una lista JSON con los siguientes campos:
-- familia: categoría del producto
-- producto: nombre del producto
-- precio: en número (sin €)
-- formato ('tapa', 'ración', etc., o 'Único' si no se dice)
+Convierte este audio transcrito (de un hostelero dictando su carta) en una lista JSON con los campos:
+- familia
+- producto
+- precio (en número, sin símbolo €)
+- formato: tapa, ración, plato... o "Único" si no se indica
 
-Ejemplo de salida:
+Ejemplo:
 [
   {{
     "familia": "Entrantes",
     "producto": "Croquetas",
     "precio": 2,
     "formato": "Único"
-  }},
-  {{
-    "familia": "Entrantes",
-    "producto": "Calamares fritos",
-    "precio": 5,
-    "formato": "ración"
   }}
 ]
 
@@ -77,19 +71,29 @@ Texto: {transcript}
         gpt_response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": "Eres un asistente que convierte listas habladas de cartas de restaurante en tablas JSON."},
+                {"role": "system", "content": "Eres un asistente que convierte listas habladas de cartas de restaurante en JSON."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.2
         )
 
-        structured = gpt_response["choices"][0]["message"]["content"]
+        structured_raw = gpt_response["choices"][0]["message"]["content"]
+
+        try:
+            structured = json.loads(structured_raw)
+        except json.JSONDecodeError as e:
+            logger.warning(f"❌ La respuesta no era JSON: {structured_raw}")
+            return Response({
+                "transcription": transcript,
+                "structured": [],
+                "error": "La respuesta no es un JSON válido",
+                "respuesta_raw": structured_raw
+            }, status=200)
 
         return Response({
             "transcription": transcript,
             "structured": structured
         })
-
 class EnviarCartaView(APIView):
     parser_classes = [JSONParser]
 
