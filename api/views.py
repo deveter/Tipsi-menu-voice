@@ -25,25 +25,30 @@ class TranscribeView(APIView):
     parser_classes = [MultiPartParser]
 
     def post(self, request, *args, **kwargs):
-        audio_file = request.FILES.get('audio')
-        if not audio_file:
+        audio_files = request.FILES.getlist('audios')
+        if not audio_files:
             return Response({"error": "No se recibió ningún archivo de audio"}, status=400)
 
-        with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as temp_audio:
-            for chunk in audio_file.chunks():
-                temp_audio.write(chunk)
-            temp_audio.flush()
+        transcriptions = []
 
-            with open(temp_audio.name, "rb") as f:
-                transcript_response = openai.Audio.transcribe(
-                    model="whisper-1",
-                    file=f,
-                    response_format="text"
-                )
+        try:
+            for audio_file in audio_files:
+                with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as temp_audio:
+                    for chunk in audio_file.chunks():
+                        temp_audio.write(chunk)
+                    temp_audio.flush()
 
-        transcript = transcript_response
+                    with open(temp_audio.name, "rb") as f:
+                        response = openai.Audio.transcribe(
+                            model="whisper-1",
+                            file=f,
+                            response_format="text"
+                        )
+                        transcriptions.append(response)
 
-        prompt = f"""
+            full_transcript = "\n".join(transcriptions)
+
+            prompt = f"""
 Convierte este texto hablado en una lista JSON con los siguientes campos:
 - familia: categoría del producto
 - producto: nombre del producto
@@ -66,24 +71,28 @@ Ejemplo de salida:
   }}
 ]
 
-Texto: {transcript}
+Texto: {full_transcript}
 """
 
-        gpt_response = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": "Eres un asistente que convierte listas habladas de cartas de restaurante en tablas JSON."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.2
-        )
+            gpt_response = openai.ChatCompletion.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "Eres un asistente que convierte listas habladas de cartas de restaurante en tablas JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.2
+            )
 
-        structured = gpt_response["choices"][0]["message"]["content"]
+            structured = gpt_response["choices"][0]["message"]["content"]
 
-        return Response({
-            "transcription": transcript,
-            "structured": structured
-        })
+            return Response({
+                "transcription": full_transcript,
+                "structured": structured
+            })
+
+        except Exception as e:
+            logger.exception("❌ Error procesando los audios:")
+            return Response({"error": str(e)}, status=500)
 
 class EnviarCartaView(APIView):
     parser_classes = [JSONParser]
