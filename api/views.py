@@ -29,7 +29,7 @@ class TranscribeView(APIView):
         if not audio_files:
             return Response({"error": "No se recibió ningún archivo de audio"}, status=400)
 
-        transcriptions = []
+        transcripciones = []
 
         try:
             for audio_file in audio_files:
@@ -39,14 +39,16 @@ class TranscribeView(APIView):
                     temp_audio.flush()
 
                     with open(temp_audio.name, "rb") as f:
-                        response = openai.Audio.transcribe(
+                        transcript_response = openai.Audio.transcribe(
                             model="whisper-1",
                             file=f,
                             response_format="text"
                         )
-                        transcriptions.append(response)
+                        transcripciones.append(transcript_response)
 
-            full_transcript = "\n".join(transcriptions)
+                os.remove(temp_audio.name)
+
+            transcript = "\n".join(transcripciones)
 
             prompt = f"""
 Convierte este texto hablado en una lista JSON con los siguientes campos:
@@ -71,7 +73,7 @@ Ejemplo de salida:
   }}
 ]
 
-Texto: {full_transcript}
+Texto: {transcript}
 """
 
             gpt_response = openai.ChatCompletion.create(
@@ -86,12 +88,13 @@ Texto: {full_transcript}
             structured = gpt_response["choices"][0]["message"]["content"]
 
             return Response({
-                "transcription": full_transcript,
+                "transcription": transcript,
                 "structured": structured
             })
 
         except Exception as e:
-            logger.exception("❌ Error procesando los audios:")
+            import traceback
+            traceback.print_exc()
             return Response({"error": str(e)}, status=500)
 
 class EnviarCartaView(APIView):
