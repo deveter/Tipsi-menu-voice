@@ -22,6 +22,24 @@ logger = logging.getLogger(__name__)
 load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent.parent / '.env')
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+import os
+import tempfile
+from pathlib import Path
+from dotenv import load_dotenv
+import openai
+import logging
+
+from rest_framework.views import APIView
+from rest_framework.parsers import MultiPartParser
+from rest_framework.response import Response
+
+# Configura logging
+logger = logging.getLogger(__name__)
+
+# Carga la API key de OpenAI
+load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent.parent / '.env')
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
 class TranscribeView(APIView):
     parser_classes = [MultiPartParser]
 
@@ -44,8 +62,9 @@ class TranscribeView(APIView):
                         file=f,
                         response_format="text"
                     )
-                    transcripciones.append(transcript_response)
+                    transcripciones.append(transcript_response.strip())
 
+        # Unimos el texto completo
         transcript = "\n".join(transcripciones)
 
         prompt = f"""
@@ -53,7 +72,7 @@ Convierte este audio transcrito (de un hostelero dictando su carta) en una lista
 - familia
 - producto
 - precio (en número, sin símbolo €)
-- formato: tapa, ración, plato... o "Único" si no se indica
+- formato: tapa, ración, plato… o "Único" si no se indica
 
 Ejemplo:
 [
@@ -68,32 +87,28 @@ Ejemplo:
 Texto: {transcript}
 """
 
-        gpt_response = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": "Eres un asistente que convierte listas habladas de cartas de restaurante en JSON."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.2
-        )
-
-        structured_raw = gpt_response["choices"][0]["message"]["content"]
-
         try:
-            structured = json.loads(structured_raw)
-        except json.JSONDecodeError as e:
-            logger.warning(f"❌ La respuesta no era JSON: {structured_raw}")
-            return Response({
-                "transcription": transcript,
-                "structured": [],
-                "error": "La respuesta no es un JSON válido",
-                "respuesta_raw": structured_raw
-            }, status=200)
+            gpt_response = openai.ChatCompletion.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "Eres un asistente que convierte listas habladas de cartas de restaurante en JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.2
+            )
+
+            structured = gpt_response["choices"][0]["message"]["content"].strip()
+
+        except Exception as e:
+            logger.exception("❌ Error al obtener respuesta de GPT:")
+            structured = "[]"
 
         return Response({
             "transcription": transcript,
             "structured": structured
         })
+
+
 class EnviarCartaView(APIView):
     parser_classes = [JSONParser]
 
