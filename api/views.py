@@ -60,7 +60,8 @@ class TranscribeView(APIView):
                     transcript_response = openai.Audio.transcribe(
                         model="whisper-1",
                         file=f,
-                        response_format="text"
+                        response_format="text",
+                        language="es"
                     )
                     transcripciones.append(transcript_response.strip())
 
