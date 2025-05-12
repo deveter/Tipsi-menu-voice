@@ -63,6 +63,7 @@ class TranscribeView(APIView):
                         response_format="text",
                         language="es"
                     )
+                    logger.info(f"📝 Transcripción Whisper: {transcript_response.strip()}")
                     transcripciones.append(transcript_response.strip())
 
         # Unimos el texto completo
@@ -101,14 +102,14 @@ Texto: {transcript}
             structured = gpt_response["choices"][0]["message"]["content"].strip()
 
         except Exception as e:
-            logger.exception("❌ Error al obtener respuesta de GPT:")
+            logger.info(f"🧠 GPT response:\n{structured}")        
             structured = "[]"
 
         return Response({
             "transcription": transcript,
             "structured": structured
         })
-
+    
 
 class EnviarCartaView(APIView):
     parser_classes = [JSONParser]
