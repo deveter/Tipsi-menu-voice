@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 import os
 import tempfile
 import json
@@ -18,21 +19,6 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-# Cargar variables de entorno
-load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent.parent / '.env')
-openai.api_key = os.getenv("OPENAI_API_KEY")
-
-import os
-import tempfile
-from pathlib import Path
-from dotenv import load_dotenv
-import openai
-import logging
-
-from rest_framework.views import APIView
-from rest_framework.parsers import MultiPartParser
-from rest_framework.response import Response
-
 # Configura logging
 logger = logging.getLogger(__name__)
 
@@ -43,36 +29,40 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 class TranscribeView(APIView):
     parser_classes = [MultiPartParser]
 
-    def post(self, request, *args, **kwargs):
-        audio_files = request.FILES.getlist('audios')
-        if not audio_files:
-            return Response({"error": "No se recibió ningún archivo de audio"}, status=400)
-
-        transcripciones = []
-
-        for audio_file in audio_files:
+    def transcribir_archivo(self, audio_file):
+        try:
             with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_audio:
                 for chunk in audio_file.chunks():
                     temp_audio.write(chunk)
                 temp_audio.flush()
 
                 with open(temp_audio.name, "rb") as f:
-                    transcript_response = openai.Audio.transcribe(
+                    transcript = openai.Audio.transcribe(
                         model="whisper-1",
                         file=f,
                         response_format="text",
                         language="es"
-                    )
-                    logger.info(f"📝 Transcripción Whisper: {transcript_response.strip()}")
-                    transcripciones.append(transcript_response.strip())
+                    ).strip()
+                    logger.info(f"📝 Transcripción Whisper: {transcript}")
+                    return transcript
+        finally:
+            if os.path.exists(temp_audio.name):
+                os.remove(temp_audio.name)
 
-        # Unimos el texto completo
+    def post(self, request, *args, **kwargs):
+        audio_files = request.FILES.getlist('audios')
+        if not audio_files:
+            return Response({"error": "No se recibió ningún archivo de audio"}, status=400)
+
+        with ThreadPoolExecutor() as executor:
+            transcripciones = list(executor.map(self.transcribir_archivo, audio_files))
+
         transcript = "\n".join(transcripciones)
 
         prompt = f"""
 Convierte este audio transcrito (de un hostelero dictando su carta) en una lista JSON con los campos:
 - familia
-- producto
+- producto (son nombres de productos de restaurantes)
 - precio (en número, sin símbolo €)
 - formato: tapa, ración, plato… o "Único" si no se indica
 
@@ -91,7 +81,7 @@ Texto: {transcript}
 
         try:
             gpt_response = openai.ChatCompletion.create(
-                model="gpt-4",
+                model="gpt-3.5-turbo",  # ⬅️ más rápido que GPT-4
                 messages=[
                     {"role": "system", "content": "Eres un asistente que convierte listas habladas de cartas de restaurante en JSON."},
                     {"role": "user", "content": prompt}
@@ -102,14 +92,13 @@ Texto: {transcript}
             structured = gpt_response["choices"][0]["message"]["content"].strip()
 
         except Exception as e:
-            logger.info(f"🧠 GPT response:\n{structured}")        
+            logger.exception("❌ Error al llamar a GPT")
             structured = "[]"
 
         return Response({
             "transcription": transcript,
             "structured": structured
         })
-    
 
 class EnviarCartaView(APIView):
     parser_classes = [JSONParser]
