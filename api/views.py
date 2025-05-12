@@ -63,7 +63,7 @@ class TranscribeView(APIView):
 Convierte este audio transcrito (de un hostelero dictando su carta) en una lista JSON con los campos:
 - familia
 - producto (son nombres de productos de restaurantes)
-- precio (en número, sin símbolo €)
+- precio (en número, €)
 - formato: tapa, ración, plato… o "Único" si no se indica
 
 Ejemplo:
@@ -121,7 +121,7 @@ class EnviarCartaView(APIView):
             cuerpo = f"El restaurante '{nombre}' con email '{email}' ha enviado su carta adjunta en Excel."
 
             enviar_email_brevo(
-                destinatario="ppinar@tipsitpv.com",
+                destinatario="customer@tipsitpv.com",
                 asunto=asunto,
                 cuerpo=cuerpo,
                 adjunto=excel_path
