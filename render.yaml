@@ -15,7 +15,7 @@ services:
       cp -r frontend/dist/assets/* backend/frontend/assets/
       python manage.py collectstatic --noinput
 
-    startCommand: gunicorn backend.wsgi:application
+    startCommand: gunicorn backend.wsgi:application --timeout 90
 
 
     envVars:
