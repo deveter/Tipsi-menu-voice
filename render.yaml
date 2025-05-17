@@ -3,6 +3,7 @@ services:
     name: tipsi-menu-voice
     env: python
     plan: free
+    rootDir: .
 
     buildCommand: |
       pip install -r requirements.txt
@@ -15,7 +16,7 @@ services:
       cp -r frontend/dist/assets/* backend/frontend/assets/
       python manage.py collectstatic --noinput
 
-    startCommand: gunicorn backend.wsgi:application --timeout 90
+    startCommand: gunicorn backend.wsgi:application --timeout 240
 
 
     envVars:
