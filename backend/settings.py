@@ -16,6 +16,7 @@ from pathlib import Path
 from corsheaders.defaults import default_headers
 from corsheaders.signals import check_request_enabled
 import logging
+import sys
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -170,16 +171,29 @@ CORS_ALLOW_METHODS = [
     "PUT",
 ]
 
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
+            'stream': sys.stdout,
         },
     },
     'root': {
         'handlers': ['console'],
         'level': 'DEBUG',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
+        'api': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
     },
 }

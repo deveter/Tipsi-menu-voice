@@ -1,11 +1,11 @@
 {
   "index.html": {
-    "file": "assets/index-Bty7E-rw.js",
+    "file": "assets/index-C5gjmWvj.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
     "css": [
-      "assets/index-Djcwd_1W.css"
+      "assets/index-DouBvlYE.css"
     ],
     "assets": [
       "assets/Micrófono-B1Q3mTTt.png",
@@ -16,13 +16,8 @@
       "assets/Enviar a Tipsi-C15Uv5aI.png",
       "assets/Completar formulario-BuHm719n.png",
       "assets/Smile face de completar formulario-DKgsSFjf.png",
-      "assets/Reloj de arena-C_sPYXTA.png",
-      "assets/favicon-CjU1YI4z.ico"
+      "assets/Reloj de arena-C_sPYXTA.png"
     ]
-  },
-  "public/favicon.ico": {
-    "file": "assets/favicon-CjU1YI4z.ico",
-    "src": "public/favicon.ico"
   },
   "src/assets/Añadir plato.png": {
     "file": "assets/Añadir plato-LSSIPH_i.png",
