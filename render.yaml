@@ -4,7 +4,16 @@ services:
     env: python
     plan: free
 
-    buildCommand: |
+    buildCommand:
+      echo "🧪 DIRECTORIO ACTUAL:"
+      pwd
+      echo "🧪 LISTADO DE ARCHIVOS:"
+      ls -l
+      echo "🧪 LISTADO DETALLADO:"
+      ls -la
+      echo "🧪 CONTENIDO DE requirements.txt"
+      cat requirements.txt || echo "❌ No encontrado"
+      
       pip install -r requirements.txt
       npm install --prefix frontend
       npm run build --prefix frontend
