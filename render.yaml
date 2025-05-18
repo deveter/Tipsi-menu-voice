@@ -3,21 +3,19 @@ services:
     name: tipsi-menu-voice
     env: python
     plan: free
-    rootDir: .
 
     buildCommand: |
       pip install -r requirements.txt
       npm install --prefix frontend
       npm run build --prefix frontend
-      mkdir -p backend/frontend/assets
-      cp frontend/public/beep.mp3 backend/frontend/
-      cp frontend/public/ejemplo.webm backend/frontend/
-      cp frontend/public/favicon.ico backend/frontend/
-      cp -r frontend/dist/assets/* backend/frontend/assets/
+      mkdir -p backend/staticfiles
+      cp frontend/public/beep.mp3 backend/
+      cp frontend/public/ejemplo.webm backend/
+      cp frontend/public/favicon.ico backend/
+      cp -r frontend/dist/assets/* backend/staticfiles/
       python manage.py collectstatic --noinput
 
-    startCommand: gunicorn backend.wsgi:application --timeout 240
-
+    startCommand: gunicorn backend.wsgi:application --timeout 90
 
     envVars:
       - key: DEBUG
