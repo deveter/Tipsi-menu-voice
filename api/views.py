@@ -113,6 +113,15 @@ class EnviarCartaView(APIView):
 
         try:
             df = pd.DataFrame(carta)
+            print("Columnas recibidas:", df.columns.tolist())
+
+            # Renombrar 'producto' a 'articulo'
+            df = df.rename(columns={'producto': 'articulo'})
+
+            # Reordenar las columnas al orden deseado
+            nuevo_orden = ["articulo", "formato", "precio", "familia"]
+            df = df[nuevo_orden]
+
             with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
                 excel_path = tmp.name
                 df.to_excel(excel_path, index=False)
@@ -132,6 +141,7 @@ class EnviarCartaView(APIView):
         except Exception as e:
             logger.exception("❌ Error al enviar el email:")
             return Response({"error": str(e)}, status=500)
+
 
 class FrontendAppView(View):
     def get(self, request):
